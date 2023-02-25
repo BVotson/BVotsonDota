@@ -16,10 +16,10 @@
 account_userName = ['@hallgheen', '@Kob2n4ik', '@B_Votson', '@Vots0n']
 accounts_list = [854861902, 1118900219, 1266375880, 1520830298]
 chatId_list = [775842886, 1175804570, 936106535, 805124040]
+is_alive = [False, False, False, False]
 
 
-
-
+from threading import Thread
 from io import BytesIO
 import ranktier
 import emoji
@@ -47,6 +47,15 @@ def getmatchid():
     matchpre = pytesseract.image_to_string(image, config='digits')
     print(matchpre)
     return matchpre
+
+def changePollingForChat_Id(id):
+    for i in chatId_list:
+        if i == id:
+            nowsNum = chatId_list.index(i)
+            is_alive[nowsNum] = not is_alive[nowsNum]
+            print(nowsNum)
+            return nowsNum
+
 #Получить айди аккаунта стим из чат_ида
 def checknamefromid(id):
     for i in chatId_list:
@@ -68,6 +77,7 @@ def checkids(chatid):
         if i == chatid:
             nowsNum = chatId_list.index(i)
             return accounts_list[nowsNum]
+
 async def send_photo_by_url(chat_id, photo_url):
     
     response = requests.get(photo_url)
@@ -143,6 +153,9 @@ def startpolling(mode, id):
         matchidDota = matchidNeed
         print(matchidDota)
         datadoto = str(emoji.emojize(":check_mark_button:")) + "B_Votson Team" + str(emoji.emojize(":check_mark_button:")) + "\n" + str(emoji.emojize(":ID_button:")) + "Матч №"+str(matchidNeed)+"\n" + str(emoji.emojize(":timer_clock:")) + "Время первой крови: " + str(first_blood) + "\n" + str(emoji.emojize(":skull:")) + "Счет игры: " + str(allKill) + "\n" + str(emoji.emojize(":timer_clock:")) + "Длительность матча: " + str(allTime) + "\n" + str(emoji.emojize(":loudspeaker:")) + "Играл за: " + teamPlayer + "\n"  + str(emoji.emojize(":loudspeaker:")) + "Результат: победа " + teamwin + "\n" + str(emoji.emojize(":man_superhero:")) + "На герое: " + str(new_id) + "\n" + str(emoji.emojize(":baby_dark_skin_tone:")) + "Урон по героям игрока: " + str(hero_dmg) + "\n" + str(emoji.emojize(":Tokyo_tower:")) + "Урон по постройкам: " + str(tower_dmg) + "\n" + str(emoji.emojize(":check_mark_button:") + "КДА: " + str(kda) + "\n" + str(emoji.emojize(":money_bag:")) + "ГПМ: " + str(gpm) + "\n" + str(emoji.emojize(":money_bag:")) + "НЕТВОРС: " + str(networse))
+        return matchidNeed
+
+
 
 
 def start_pollingProfile(mode, id):
@@ -157,12 +170,58 @@ def start_pollingProfile(mode, id):
         countryName = response.json()['profile']['loccountrycode']
         return rankTier, profile_name, lastLogin_time, full_avatar_link, countryName
 
+def createNewPoller(mode, id, chatid):
+    if mode == True:
+        id_in_list = changePollingForChat_Id(id)
+        lastmatchbefore = startpolling(False, id)
+        while is_alive[id_in_list] == True:
+            url = 'https://api.opendota.com/api/players/' + str(userId) + '/recentMatches'
+            response = requests.get(url)
+            matchid_last_Poller = response.json()[0]['match_id']
+            if matchid_last_Poller != lastmatchbefore:
+                #await bot.send_message(chatid, "У пользователя №" + str(id) + " был сыгран новый матч. Быстрее апросите его обработку")
+                pass
+            
+            
+        
+
+        
 
 
 
 @dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
     await message.reply("Ура, все работает!!!!")
+
+@dp.message_handler(commands=['startpolling'])
+async def send_welcome(msg: types.Message):
+    command = msg.get_full_command()
+    await msg.answer("Создаеться запрос на автоматическое обновление профиля. Ожидайте")
+    command = msg.get_full_command()
+    idNeed = checkidfromname(command[1])
+    profile_id = checkids(idNeed)
+
+    t1 = Thread(target=createNewPoller, args = (True, profile_id, checkidfromname(str(command[1]))))
+    t1.start()
+    await msg.answer("Автоматическое обновление включено. ")
+    
+@dp.message_handler(commands=['stoppolling'])
+async def send_welcome(msg: types.Message):
+    
+    command = msg.get_full_command()
+    await msg.answer("Создаеться запрос на отключение автоматического обновления профиля.")
+    command = msg.get_full_command()
+    idNeed = checkidfromname(command[1])
+    profile_id = checkids(idNeed)
+    id_in_list = changePollingForChat_Id(checkidfromname(str(command[1])))
+    await msg.answer("Автоматическое обновление матчей отключено.")
+    
+
+    
+
+
+    
+
 
 
 @dp.message_handler(commands=['checkProfile'])
